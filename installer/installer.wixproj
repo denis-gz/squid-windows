@@ -32,6 +32,7 @@
     <DefineConstants>ResDir=..\res;DiladeleDir=..\prepared;</DefineConstants>
   </PropertyGroup>
   <ItemGroup>
+    <Compile Include="SettingsDialog.wxs" />
     <Compile Include="Firewall.wxs" />
     <Compile Include="Product.wxs" />
     <Compile Include="SquidRegistry.wxs" />
@@ -62,6 +63,16 @@
     <Content Include="dialog.bmp" />
     <Content Include="license.rtf" />
     <Content Include="SquidIcon.ico" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\installer-ca\installer-ca.csproj">
+      <Name>installer-ca</Name>
+      <Project>{8e63661c-c425-48d6-b617-1f733dd3012d}</Project>
+      <Private>True</Private>
+      <DoNotHarvest>True</DoNotHarvest>
+      <RefProjectOutputGroups>Binaries;Content;Satellites</RefProjectOutputGroups>
+      <RefTargetDir>INSTALLFOLDER</RefTargetDir>
+    </ProjectReference>
   </ItemGroup>
   <Import Project="$(WixTargetsPath)" />
   <PropertyGroup>

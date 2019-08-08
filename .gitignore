@@ -1,7 +1,10 @@
 certificates/
 *.pfx
 */obj/
+bin/
 installer/bin/
 squid/diladele/
+prepared/diladele/
 *.suo
+.vs
 sign.bat
