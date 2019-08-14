@@ -22,6 +22,7 @@ namespace Installer
 
         const string SQUID_ACCEPT_NETWORKS = "SQUID_ACCEPT_NETWORKS";
         const string SQUID_DNS_SERVERS = "SQUID_DNS_SERVERS";
+        const string SQUID_HTTP_PORT = "SQUID_HTTP_PORT";
         const string SQUID_SETTINGS_VALID = "SQUID_SETTINGS_VALID";
 
         [CustomAction]
@@ -64,20 +65,42 @@ namespace Installer
                     {
                         var parts = ip_prefix.Split('/');
                         if (parts.Length != 2)
+                        {
+                            session.Log("Network format is invalid: '" + ip_prefix + "'");
                             return false;
+                        }
                         if (!IPAddress.TryParse(parts[0].Trim(), out IPAddress _))
+                        {
+                            session.Log("Network address is invalid: '" + parts[0].Trim() + "'");
                             return false;
+                        }
                         if (!Byte.TryParse(parts[1].Trim(), out byte prefix) || (prefix == 0 || prefix > 32))
+                        {
+                            session.Log("Network prefix is invalid: '" + parts[1].Trim() + "'");
                             return false;
+                        }
                     }
 
                     var host_list = session[SQUID_DNS_SERVERS].Split(',');
                     if (host_list.Length == 0)
+                    {
+                        session.Log("DNS host list is empty");
                         return false;
+                    }
                     foreach (var host in host_list)
                     {
                         if (Uri.CheckHostName(host.Trim()) == UriHostNameType.Unknown)
+                        {
+                            session.Log("Bad DNS host name: '" + host.Trim() + "'");
                             return false;
+                        }
+                    }
+
+                    var port_param = session[SQUID_HTTP_PORT].Trim();
+                    if (!UInt16.TryParse(port_param, out ushort http_port))
+                    {
+                        session.Log("HTTP port is invalid: '" + port_param + "'");
+                        return false;
                     }
 
                     return true;
@@ -106,6 +129,7 @@ namespace Installer
             const string LINE_SQUID_LOCALNET = "#LINE_SQUID_LOCALNET";
             const string LINE_SQUID_CACHE_DIR = "#LINE_SQUID_CACHE_DIR";
             const string LINE_SQUID_DNS_SERVERS = "#LINE_SQUID_DNS_SERVERS";
+            const string LINE_SQUID_HTTP_PORT = "#LINE_SQUID_HTTP_PORT";
 
             session.Log("Begin ApplySquidSettings");
 
@@ -132,6 +156,13 @@ namespace Installer
                                 i += (networks_list.Length - 1);
                             continue;
                         }
+                        if (config_lines[i].StartsWith(LINE_SQUID_HTTP_PORT))
+                        {
+                            config_lines.RemoveAt(i);
+                            string value = String.Format("http_port {0}", session.CustomActionData[SQUID_HTTP_PORT]);
+                            config_lines.Insert(i, value);
+                            continue;
+                        }
                         if (config_lines[i].StartsWith(LINE_SQUID_CACHE_DIR))
                         {
                             config_lines.RemoveAt(i);
@@ -151,7 +182,7 @@ namespace Installer
                         }
                     }
 
-                    File.WriteAllLines(config_path, config_lines.ToArray(), Encoding.UTF8);
+                    File.WriteAllLines(config_path, config_lines.ToArray());
 
                     result = ActionResult.Success;
                 }
@@ -162,7 +193,7 @@ namespace Installer
             }
             else
             {
-                session.Log("Squid settings are not valid, please re-run installer.");
+                session.Log("Squid settings are not valid, please check parameters and re-run installer.");
             }
 
             session.Log("End ApplySquidSettings");

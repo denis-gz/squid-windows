@@ -19,6 +19,8 @@
         <Control Id="NetworksEdit" Type="Edit" X="45" Y="85" Width="280" Height="18" Property="SQUID_ACCEPT_NETWORKS"/>
         <Control Id="DnsAddressLabel" Type="Text" X="45" Y="110" Width="280" Height="15" TabSkip="no" Text="DNS servers (separate by commas):"/>
         <Control Id="DnsAddressEdit" Type="Edit" X="45" Y="122" Width="280" Height="18" Property="SQUID_DNS_SERVERS"/>
+        <Control Id="HttpPortLabel" Type="Text" X="45" Y="147" Width="280" Height="15" TabSkip="no" Text="HTTP port:"/>
+        <Control Id="HttpPortEdit" Type="Edit" X="45" Y="159" Width="280" Height="18" Property="SQUID_HTTP_PORT"/>
       </Dialog>
     </UI>
 	</Fragment>
