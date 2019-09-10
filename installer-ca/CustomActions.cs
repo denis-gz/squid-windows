@@ -13,6 +13,8 @@ using System.Windows.Forms;
 
 using Microsoft.Deployment.WindowsInstaller;
 
+using CryptSharp;
+
 namespace Installer
 {
     public class CustomActions
@@ -23,7 +25,10 @@ namespace Installer
         const string SQUID_ACCEPT_NETWORKS = "SQUID_ACCEPT_NETWORKS";
         const string SQUID_DNS_SERVERS = "SQUID_DNS_SERVERS";
         const string SQUID_HTTP_PORT = "SQUID_HTTP_PORT";
-        const string SQUID_SETTINGS_VALID = "SQUID_SETTINGS_VALID";
+        const string SQUID_USE_AUTH = "SQUID_USE_AUTH";
+        const string SQUID_AUTH_USER = "SQUID_AUTH_USER";
+        const string SQUID_AUTH_PASSWORD = "SQUID_AUTH_PASSWORD";
+        const string SquidSettingsValid = "SquidSettingsValid";
 
         [CustomAction]
         public static ActionResult ValidateInstallPath(Session session)
@@ -103,11 +108,28 @@ namespace Installer
                         return false;
                     }
 
+                    var use_auth_param = session[SQUID_USE_AUTH].Trim();
+                    if (use_auth_param == "1")
+                    {
+                        var auth_user_param = session[SQUID_AUTH_USER];
+                        if (auth_user_param.Trim().Length == 0 || auth_user_param.Length > 255 || auth_user_param.Contains(":"))
+                        {
+                            session.Log("Proxy user name is not valid (should be upto 255 chars in length and not contain a colon symbol (':'): '" + auth_user_param + "'");
+                            return false;
+                        }
+                        var auth_password_param = session[SQUID_AUTH_PASSWORD];
+                        if (auth_password_param.Length == 0 || auth_password_param.Length > 255)
+                        {
+                            session.Log("Proxy user password is not valid (should be upto 255 chars in length)");
+                            return false;
+                        }
+                    }
+
                     return true;
                 };
 
                 if (validate())
-                    session[SQUID_SETTINGS_VALID] = "1";
+                    session[SquidSettingsValid] = "1";
             }
             catch (Exception x)
             {
@@ -130,10 +152,12 @@ namespace Installer
             const string LINE_SQUID_CACHE_DIR = "#LINE_SQUID_CACHE_DIR";
             const string LINE_SQUID_DNS_SERVERS = "#LINE_SQUID_DNS_SERVERS";
             const string LINE_SQUID_HTTP_PORT = "#LINE_SQUID_HTTP_PORT";
+            const string LINE_SQUID_HTTP_ACCESS = "#LINE_SQUID_HTTP_ACCESS";
+            const string LINE_SQUID_ACL_AUTH = "#LINE_SQUID_ACL_AUTH";
 
             session.Log("Begin ApplySquidSettings");
 
-            if (session.CustomActionData[SQUID_SETTINGS_VALID] == "1")
+            if (session.CustomActionData[SquidSettingsValid] == "1")
             {
                 try
                 {
@@ -166,7 +190,7 @@ namespace Installer
                         if (config_lines[i].StartsWith(LINE_SQUID_CACHE_DIR))
                         {
                             config_lines.RemoveAt(i);
-                            string cache_path = "/cygdrive/" + install_path.Replace(":\\", "/").Replace('\\', '/').TrimEnd('/') + "/cache";
+                            string cache_path = GetCygdrivePath(install_path) + "/var/cache";
                             string value = String.Format("cache_dir aufs {0} 3000 16 256", cache_path);
                             session.Log("Inserting value at line {0}: '{1}'", i, value);
                             config_lines.Insert(i, value);
@@ -180,9 +204,45 @@ namespace Installer
                             config_lines.Insert(i, value);
                             continue;
                         }
+                        if (config_lines[i].StartsWith(LINE_SQUID_ACL_AUTH))
+                        {
+                            config_lines.RemoveAt(i);
+                            if (session.CustomActionData[SQUID_USE_AUTH] == "1")
+                            {
+                                string cygdrive_path = GetCygdrivePath(install_path);
+                                string ncsa_auth_path = cygdrive_path + "/lib/squid/basic_ncsa_auth.exe";
+                                string htpasswd_path = cygdrive_path + "/etc/.htpasswd";
+                                string value = String.Format("auth_param basic program \"{0}\" \"{1}\"", ncsa_auth_path, htpasswd_path);
+                                config_lines.Insert(i++, value);
+                                config_lines.Insert(i, "acl ncsa_users proxy_auth REQUIRED");
+                            }
+                        }
+                        if (config_lines[i].StartsWith(LINE_SQUID_HTTP_ACCESS))
+                        {
+                            config_lines.RemoveAt(i);
+                            if (session.CustomActionData[SQUID_USE_AUTH] == "1")
+                            {
+                                config_lines.Insert(i, "http_access allow ncsa_users");
+                            }
+                            else
+                            {
+                                config_lines.Insert(i, "http_access allow localnet");
+                            }
+                        }
                     }
 
                     File.WriteAllLines(config_path, config_lines.ToArray());
+
+                    if (session.CustomActionData[SQUID_USE_AUTH] == "1")
+                    {
+                        string enc_passwd = Crypter.MD5.Crypt(session.CustomActionData[SQUID_AUTH_PASSWORD], new CrypterOptions
+                        {
+                            { CrypterOption.Variant, MD5CrypterVariant.Apache }
+                        });
+                        string entry = String.Format("{0}:{1}", session.CustomActionData[SQUID_AUTH_USER], enc_passwd);
+                        string htpasswd_path = Path.Combine(install_path, @"etc\.htpasswd");
+                        File.WriteAllText(htpasswd_path, entry);
+                    }
 
                     result = ActionResult.Success;
                 }
@@ -198,6 +258,12 @@ namespace Installer
 
             session.Log("End ApplySquidSettings");
 
+            return result;
+        }
+
+        private static string GetCygdrivePath(string installPath)
+        {
+            string result = "/cygdrive/" + installPath.Replace(":\\", "/").Replace('\\', '/').TrimEnd('/');
             return result;
         }
     }

@@ -1,9 +1,9 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <Wix xmlns="http://schemas.microsoft.com/wix/2006/wi"
      xmlns:util="http://schemas.microsoft.com/wix/UtilExtension">
-  
-  <?define ProductVersion="3.5.28"?>
-  <Product Id="8F522C57-4690-444B-A57A-C36D5EA65B9D" Name="Squid" Language="1033" Version="$(var.ProductVersion)" Manufacturer="ITarian LLC" UpgradeCode="103139C5-4C94-471D-94D6-D838BB7E6CB9">
+
+  <?define ProductVersion="3.5.28.3"?>
+  <Product Id="49A7D432-0303-450F-9BDD-7CB69EAAA24F" Name="Squid" Language="1033" Version="$(var.ProductVersion)" Manufacturer="ITarian LLC" UpgradeCode="103139C5-4C94-471D-94D6-D838BB7E6CB9">
     <Package InstallerVersion="200" Compressed="yes" InstallScope="perMachine" Description="Installer for Squid from ITarian LLC" Comments="Version $(var.ProductVersion)"/>
 
     <MajorUpgrade DowngradeErrorMessage="A newer version of [ProductName] is already installed." />
@@ -24,6 +24,8 @@
     </Property>
 
     <Property Id="SQUID_HTTP_PORT" Value="3128"/>
+    <Property Id="SQUID_AUTH_USER" Value="admin"/>
+    <Property Id="SQUID_AUTH_PASSWORD" Hidden="yes"/>
 
     <!-- Licenses and themes -->
     <WixVariable Id="WixUILicenseRtf" Value="license.rtf" />
@@ -47,11 +49,14 @@
 
     <CustomAction Id="RunSslCrtdPrepare" Property="RunSslCrtd" Value="&quot;[squid_1]ssl_crtd.exe&quot; -c -s &quot;[cache]squid_ssldb&quot;" Execute="immediate"/>
     <CustomAction Id="RunSslCrtd" BinaryKey="WixCA" DllEntry="CAQuietExec" Execute="deferred" Return="check" Impersonate="no"/>
+    
+    <CustomAction Id="RunSquidZPrepare" Property="RunSquidZ" Value="&quot;[#squid.exe]&quot; -z" Execute="immediate"/>
+    <CustomAction Id="RunSquidZ" BinaryKey="WixCA" DllEntry="CAQuietExec" Execute="deferred" Return="ignore" Impersonate="no"/>
 
     <CustomAction Id="ValidateInstallPath" BinaryKey="InstallerCA" DllEntry="ValidateInstallPath" Execute="immediate" Return="check"/>
     <CustomAction Id="ValidateSquidSettings" BinaryKey="InstallerCA" DllEntry="ValidateSquidSettings" Execute="immediate" Return="check"/>
 
-    <CustomAction Id="ApplySquidSettingsPrepare" Property="ApplySquidSettings" Value="INSTALLFOLDER=[INSTALLFOLDER];SQUID_SETTINGS_VALID=[SQUID_SETTINGS_VALID];SQUID_ACCEPT_NETWORKS=[SQUID_ACCEPT_NETWORKS];SQUID_DNS_SERVERS=[SQUID_DNS_SERVERS];SQUID_HTTP_PORT=[SQUID_HTTP_PORT]"/>
+    <CustomAction Id="ApplySquidSettingsPrepare" Property="ApplySquidSettings" Value="SquidSettingsValid=[SquidSettingsValid];INSTALLFOLDER=[INSTALLFOLDER];SQUID_ACCEPT_NETWORKS=[SQUID_ACCEPT_NETWORKS];SQUID_DNS_SERVERS=[SQUID_DNS_SERVERS];SQUID_HTTP_PORT=[SQUID_HTTP_PORT];SQUID_USE_AUTH=[SQUID_USE_AUTH];SQUID_AUTH_USER=[SQUID_AUTH_USER];SQUID_AUTH_PASSWORD=[SQUID_AUTH_PASSWORD]"/>
     <CustomAction Id="ApplySquidSettings" BinaryKey="InstallerCA" DllEntry="ApplySquidSettings" Execute="deferred" Return="check"/>
 
     <InstallExecuteSequence>
@@ -63,12 +68,15 @@
       <Custom Action="ApplySquidSettingsPrepare" Before="ApplySquidSettings">NOT Installed</Custom>
       <Custom Action="ApplySquidSettings" After="InstallFiles">NOT Installed</Custom>
       <Custom Action="RunSslCrtd" Before="InstallFinalize">NOT Installed</Custom>
+      <Custom Action="RunSquidZPrepare" Before="RunSquidZ">NOT Installed</Custom>
+      <Custom Action="RunSquidZ" Before="StartServices">NOT Installed</Custom>
       <Custom Action="LaunchApplicationFile" Before="InstallFinalize"><![CDATA[NOT Installed AND CLIENTUILEVEL > 0]]></Custom>
     </InstallExecuteSequence>
 
     <UI>
       <UIRef Id="WixUI_InstallDir"/>
       <DialogRef Id="SquidSettingsDlg" />
+      <DialogRef Id="SquidAuthDlg" />
 
       <!-- Start tray application -->
       <Publish Dialog="ExitDialog" Control="Finish" Event="DoAction" Value="LaunchApplication">
@@ -78,9 +86,11 @@
       <Publish Dialog="InstallDirDlg" Control="Next" Event="DoAction" Value="ValidateInstallPath" Order="3">NOT WIXUI_DONTVALIDATEPATH</Publish>
       <Publish Dialog="InstallDirDlg" Control="Next" Event="NewDialog" Value="SquidSettingsDlg" Order="4">WIXUI_DONTVALIDATEPATH OR WIXUI_INSTALLDIR_VALID="1"</Publish>
       <Publish Dialog="SquidSettingsDlg" Control="Back" Event="NewDialog" Value="InstallDirDlg">1</Publish>
-      <Publish Dialog="SquidSettingsDlg" Control="Next" Event="DoAction" Value="ValidateSquidSettings" Order="1">1</Publish>
-      <Publish Dialog="SquidSettingsDlg" Control="Next" Event="NewDialog" Value="VerifyReadyDlg" Order="2">SQUID_SETTINGS_VALID="1"</Publish>
-      <Publish Dialog="VerifyReadyDlg" Control="Back" Event="NewDialog" Value="SquidSettingsDlg" Order="1">NOT Installed</Publish>
+      <Publish Dialog="SquidSettingsDlg" Control="Next" Event="NewDialog" Value="SquidAuthDlg">1</Publish>
+      <Publish Dialog="SquidAuthDlg" Control="Back" Event="NewDialog" Value="SquidSettingsDlg">1</Publish>
+      <Publish Dialog="SquidAuthDlg" Control="Next" Event="DoAction" Value="ValidateSquidSettings" Order="1">1</Publish>
+      <Publish Dialog="SquidAuthDlg" Control="Next" Event="NewDialog" Value="VerifyReadyDlg" Order="2">SquidSettingsValid="1"</Publish>
+      <Publish Dialog="VerifyReadyDlg" Control="Back" Event="NewDialog" Value="SquidAuthDlg" Order="1">NOT Installed</Publish>
     </UI>
 
     <util:CloseApplication Id="CloseTrayApp" Target="Diladele.Squid.Tray.exe" CloseMessage="yes" ElevatedCloseMessage="yes" TerminateProcess="0" RebootPrompt="no">

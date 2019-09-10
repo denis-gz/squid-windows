@@ -15,11 +15,11 @@
         <Control Id="BannerLine" Type="Line" X="0" Y="44" Width="370" Height="0" />
         <Control Id="BottomLine" Type="Line" X="0" Y="234" Width="370" Height="0" />
 
-        <Control Id="NetworksLabel" Type="Text" X="45" Y="73" Width="280" Height="15" TabSkip="no" Text="Networks to accept (list of &lt;ip_address&gt;/&lt;prefix&gt;, separated by commas):"/>
+        <Control Id="NetworksLabel" Type="Text" X="45" Y="73" Width="280" Height="12" Text="Networks to accept (list of &lt;ip_address&gt;/&lt;prefix&gt;, separated by commas):"/>
         <Control Id="NetworksEdit" Type="Edit" X="45" Y="85" Width="280" Height="18" Property="SQUID_ACCEPT_NETWORKS"/>
-        <Control Id="DnsAddressLabel" Type="Text" X="45" Y="110" Width="280" Height="15" TabSkip="no" Text="DNS servers (separate by commas):"/>
+        <Control Id="DnsAddressLabel" Type="Text" X="45" Y="110" Width="280" Height="12" Text="DNS servers (separate by commas):"/>
         <Control Id="DnsAddressEdit" Type="Edit" X="45" Y="122" Width="280" Height="18" Property="SQUID_DNS_SERVERS"/>
-        <Control Id="HttpPortLabel" Type="Text" X="45" Y="147" Width="280" Height="15" TabSkip="no" Text="HTTP port:"/>
+        <Control Id="HttpPortLabel" Type="Text" X="45" Y="147" Width="280" Height="12" Text="HTTP port:"/>
         <Control Id="HttpPortEdit" Type="Edit" X="45" Y="159" Width="280" Height="18" Property="SQUID_HTTP_PORT"/>
       </Dialog>
     </UI>

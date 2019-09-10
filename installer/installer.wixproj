@@ -31,8 +31,12 @@
     <IntermediateOutputPath>obj\$(Platform)\$(Configuration)\</IntermediateOutputPath>
     <DefineConstants>ResDir=..\res;DiladeleDir=..\prepared;</DefineConstants>
   </PropertyGroup>
+  <PropertyGroup>
+    <SuppressIces>ICE03</SuppressIces>
+  </PropertyGroup>
   <ItemGroup>
-    <Compile Include="SettingsDialog.wxs" />
+    <Compile Include="SquidAuthDlg.wxs" />
+    <Compile Include="SquidSettingsDlg.wxs" />
     <Compile Include="Firewall.wxs" />
     <Compile Include="Product.wxs" />
     <Compile Include="SquidRegistry.wxs" />
